@@ -336,26 +336,14 @@
             text-decoration: line-through;
         }
 
-        /* Next upcoming task highlight */
-        tbody tr.next-task {
+        /* Highlight tasks due within 1 hour */
+        tbody tr.due-soon {
             background: linear-gradient(90deg, #fef3c7 0%, #fef9c3 100%);
             border-left: 4px solid #f59e0b;
-            animation: pulse-highlight 2s ease-in-out infinite;
         }
 
-        tbody tr.next-task:hover {
+        tbody tr.due-soon:hover {
             background: linear-gradient(90deg, #fde68a 0%, #fef08a 100%);
-        }
-
-        @keyframes pulse-highlight {
-            0%, 100% { box-shadow: inset 0 0 0 0 rgba(245, 158, 11, 0); }
-            50% { box-shadow: inset 0 0 8px 0 rgba(245, 158, 11, 0.15); }
-        }
-
-        tbody tr.next-task td:first-child::before {
-            content: '▶ ';
-            color: #f59e0b;
-            font-weight: bold;
         }
 
         td {
@@ -1012,31 +1000,15 @@
                 return;
             }
 
-            // Find the next upcoming task (first uncompleted task with positive time left)
-            let nextTaskId = null;
-            for (const task of filteredTasks) {
-                if (!task.done) {
-                    const timeLeft = calculateTimeLeft(currentDecimal, task.deadlineDecimal);
-                    if (timeLeft > 0) {
-                        nextTaskId = task.id;
-                        break;
-                    }
-                }
-            }
-            // If no future task found, highlight the first uncompleted task (even if overdue)
-            if (!nextTaskId) {
-                const firstUncompleted = filteredTasks.find(t => !t.done);
-                if (firstUncompleted) nextTaskId = firstUncompleted.id;
-            }
-
             const rows = filteredTasks.map(task => {
                 const timeLeft = calculateTimeLeft(currentDecimal, task.deadlineDecimal);
                 const urgency = getUrgencyClass(timeLeft);
                 const completedClass = task.done ? 'completed' : '';
-                const nextTaskClass = (task.id === nextTaskId && !task.done) ? 'next-task' : '';
+                // Highlight tasks due within 1 hour (and not completed)
+                const dueSoonClass = (!task.done && timeLeft > 0 && timeLeft < 1) ? 'due-soon' : '';
 
                 return `
-                    <tr class="${completedClass} ${nextTaskClass}" onclick="handleRowClick(event, '${task.id}')">
+                    <tr class="${completedClass} ${dueSoonClass}" onclick="handleRowClick(event, '${task.id}')">
                         <td><span class="desk-badge">${task.desk}</span></td>
                         <td>
                             ${task.name}
