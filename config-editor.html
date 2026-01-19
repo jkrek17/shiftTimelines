@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚙️ Config Editor - Shift Timeline</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #006994 0%, #0891b2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #0c4a6e 0%, #0891b2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+
+        /* Navigation */
+        .nav {
+            background: white;
+            padding: 15px 30px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .nav a {
+            text-decoration: none;
+            padding: 10px 20px;
+            background: #0c4a6e;
+            color: white;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .nav a:hover {
+            background: #0891b2;
+            transform: translateY(-2px);
+        }
+
+        .nav .status {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #10b981;
+        }
+
+        .status-dot.error {
+            background: #dc2626;
+        }
+
+        /* Main Content */
+        .content {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 20px;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            height: fit-content;
+        }
+
+        .desk-list {
+            list-style: none;
+        }
+
+        .desk-item {
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+
+        .desk-item:hover {
+            background: #e0f2fe;
+            transform: translateX(5px);
+        }
+
+        .desk-item.active {
+            background: linear-gradient(135deg, #0891b2 0%, #0c4a6e 100%);
+            color: white;
+        }
+
+        .shift-tabs {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .shift-tab {
+            flex: 1;
+            padding: 10px;
+            background: #f5f5f5;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .shift-tab.active {
+            background: #0c4a6e;
+            color: white;
+        }
+
+        /* Editor */
+        .editor {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .editor h2 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #0c4a6e;
+        }
+
+        .tasks-list {
+            list-style: none;
+        }
+
+        .task-item {
+            background: #f9f9f9;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.2s;
+        }
+
+        .task-item:hover {
+            border-color: #0891b2;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .task-number {
+            background: #0c4a6e;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .task-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .btn-danger {
+            background: #dc2626;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+
+        .btn-primary {
+            background: #0c4a6e;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0891b2;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #0891b2;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 2fr;
+            gap: 15px;
+        }
+
+        /* Action Bar */
+        .action-bar {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            display: flex;
+            gap: 15px;
+            z-index: 1000;
+        }
+
+        .action-bar .btn {
+            padding: 12px 24px;
+            font-size: 16px;
+        }
+
+        /* Add Task Button */
+        .add-task-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+        }
+
+        .add-task-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(76, 175, 80, 0.3);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state h3 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        /* Alert */
+        .alert {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            background: #10b981;
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 10000;
+            animation: slideIn 0.3s ease;
+        }
+
+        .alert.error {
+            background: #dc2626;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>⚙️ Configuration Editor</h1>
+            <p>Edit shift timelines, tasks, and deadlines</p>
+        </div>
+
+        <!-- Navigation -->
+        <div class="nav">
+            <a href="index.html">← Back to Dashboard</a>
+            <div class="status">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Ready</span>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="content">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <h3 style="margin-bottom: 15px; color: #0c4a6e;">Desks</h3>
+                <ul class="desk-list" id="deskList"></ul>
+                
+                <div class="shift-tabs">
+                    <button class="shift-tab active" onclick="switchShift('Night Shift')">🌙 Night</button>
+                    <button class="shift-tab" onclick="switchShift('Day Shift')">☀️ Day</button>
+                </div>
+            </div>
+
+            <!-- Editor -->
+            <div class="editor">
+                <h2 id="editorTitle">Select a desk to begin</h2>
+                <button class="add-task-btn" onclick="addNewTask()" id="addTaskBtn" style="display: none;">
+                    ➕ Add New Task
+                </button>
+                <ul class="tasks-list" id="tasksList"></ul>
+            </div>
+        </div>
+
+        <!-- Action Bar -->
+        <div class="action-bar">
+            <button class="btn btn-primary" onclick="restoreDefault()">
+                🔄 Restore Default
+            </button>
+            <button class="btn btn-success" onclick="saveConfig()">
+                💾 Save Changes
+            </button>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script>
+        let currentDesk = null;
+        let currentShift = 'Night Shift';
+        let configData = JSON.parse(JSON.stringify(SHIFT_TIMELINES)); // Deep copy
+
+        function init() {
+            renderDeskList();
+        }
+
+        function renderDeskList() {
+            const deskList = document.getElementById('deskList');
+            
+            // Define custom desk order
+            const deskOrder = [
+                'Pac Regional',
+                'Pac High Seas',
+                'Atl Regional',
+                'Atl High Seas',
+                'Outlook',
+                'HFO Backup'
+            ];
+            
+            // Get available desks
+            const availableDesks = Object.keys(configData);
+            
+            // Create ordered list
+            const orderedDesks = [];
+            
+            // Add desks in specified order (only if they exist)
+            deskOrder.forEach(desk => {
+                if (availableDesks.includes(desk)) {
+                    orderedDesks.push(desk);
+                }
+            });
+            
+            // Add any remaining desks that weren't in the order list
+            availableDesks.forEach(desk => {
+                if (!deskOrder.includes(desk)) {
+                    orderedDesks.push(desk);
+                }
+            });
+            
+            deskList.innerHTML = orderedDesks.map(desk => `
+                <li class="desk-item" onclick="selectDesk('${desk}')">${desk}</li>
+            `).join('');
+        }
+
+        function selectDesk(desk) {
+            currentDesk = desk;
+            
+            // Update active state
+            document.querySelectorAll('.desk-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.textContent === desk) {
+                    item.classList.add('active');
+                }
+            });
+
+            renderTasks();
+        }
+
+        function switchShift(shift) {
+            currentShift = shift;
+            
+            // Update active state
+            document.querySelectorAll('.shift-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            if (currentDesk) {
+                renderTasks();
+            }
+        }
+
+        function renderTasks() {
+            if (!currentDesk) return;
+
+            const tasks = configData[currentDesk].shifts[currentShift];
+            const tasksList = document.getElementById('tasksList');
+            const editorTitle = document.getElementById('editorTitle');
+            const addTaskBtn = document.getElementById('addTaskBtn');
+
+            editorTitle.textContent = `${currentDesk} - ${currentShift}`;
+            addTaskBtn.style.display = 'block';
+
+            if (!tasks || tasks.length === 0) {
+                tasksList.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No tasks yet</h3>
+                        <p>Click "Add New Task" to create one</p>
+                    </div>
+                `;
+                return;
+            }
+
+            tasksList.innerHTML = tasks.map((task, index) => `
+                <li class="task-item">
+                    <div class="task-header">
+                        <span class="task-number">Task ${index + 1}</span>
+                        <div class="task-actions">
+                            <button class="btn btn-danger" onclick="deleteTask(${index})">
+                                🗑️ Delete
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Task Name</label>
+                            <input type="text" value="${task.name}" 
+                                   onchange="updateTask(${index}, 'name', this.value)">
+                        </div>
+                        <div class="form-group">
+                            <label>Deadline (HH:MM)</label>
+                            <input type="text" value="${task.deadline}" 
+                                   pattern="[0-9]{2}:[0-9]{2}"
+                                   onchange="updateTask(${index}, 'deadline', this.value)">
+                        </div>
+                        <div class="form-group">
+                            <label>Link (optional)</label>
+                            <input type="text" value="${task.link || ''}" 
+                                   onchange="updateTask(${index}, 'link', this.value)">
+                        </div>
+                    </div>
+                </li>
+            `).join('');
+        }
+
+        function updateTask(index, field, value) {
+            if (!currentDesk) return;
+
+            const tasks = configData[currentDesk].shifts[currentShift];
+            tasks[index][field] = value;
+            showStatus('Task updated');
+        }
+
+        function deleteTask(index) {
+            if (!confirm('Delete this task?')) return;
+
+            const tasks = configData[currentDesk].shifts[currentShift];
+            tasks.splice(index, 1);
+            renderTasks();
+            showStatus('Task deleted');
+        }
+
+        function addNewTask() {
+            if (!currentDesk) return;
+
+            const tasks = configData[currentDesk].shifts[currentShift];
+            tasks.push({
+                name: 'New Task',
+                deadline: '00:00',
+                done: false,
+                link: ''
+            });
+            
+            renderTasks();
+            showStatus('Task added');
+        }
+
+        async function saveConfig() {
+            try {
+                showStatus('Saving...', false);
+
+                // Generate JavaScript file content
+                const jsContent = `// NOAA OPC Timeline Configuration
+// Last updated: ${new Date().toISOString()}
+
+const SHIFT_TIMELINES = ${JSON.stringify(configData, null, 4)};
+`;
+
+                // Save to server
+                const response = await fetch('save_config.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        content: jsContent
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showStatus('✅ Configuration saved!');
+                    setTimeout(() => {
+                        if (confirm('Configuration saved! Reload the dashboard to see changes?')) {
+                            window.location.href = 'index.html';
+                        }
+                    }, 1000);
+                } else {
+                    throw new Error(result.error || 'Save failed');
+                }
+            } catch (error) {
+                console.error('Save error:', error);
+                showStatus('❌ Save failed: ' + error.message, true);
+            }
+        }
+
+        async function restoreDefault() {
+            if (!confirm('Restore default configuration? This will overwrite all current changes.')) {
+                return;
+            }
+
+            try {
+                showStatus('Restoring default...', false);
+
+                const response = await fetch('save_config.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'restore_default'
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showStatus('✅ Default configuration restored!');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    throw new Error(result.error || 'Restore failed');
+                }
+            } catch (error) {
+                console.error('Restore error:', error);
+                showStatus('❌ Restore failed: ' + error.message, true);
+            }
+        }
+
+        function showStatus(message, isError = false) {
+            // Update status indicator
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            
+            if (isError) {
+                statusDot.classList.add('error');
+                statusText.textContent = 'Error';
+            } else {
+                statusDot.classList.remove('error');
+                statusText.textContent = message;
+            }
+
+            // Show alert
+            const alert = document.createElement('div');
+            alert.className = `alert ${isError ? 'error' : ''}`;
+            alert.textContent = message;
+            document.body.appendChild(alert);
+
+            setTimeout(() => {
+                alert.style.transition = 'opacity 0.3s';
+                alert.style.opacity = '0';
+                setTimeout(() => alert.remove(), 300);
+            }, 3000);
+
+            // Reset status after delay
+            if (!isError) {
+                setTimeout(() => {
+                    statusText.textContent = 'Ready';
+                }, 3000);
+            }
+        }
+
+        // Initialize
+        init();
+    </script>
+</body>
+</html>
