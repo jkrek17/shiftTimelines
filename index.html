@@ -560,8 +560,9 @@
         // State
         let allTasks = [];
         let filteredTasks = [];
-        let currentFilter = { shift: 'all', desk: 'all' };
-        let showCompleted = true;
+        // Restore filter state from localStorage or use defaults
+        let currentFilter = JSON.parse(localStorage.getItem('currentFilter')) || { shift: 'all', desk: 'all' };
+        let showCompleted = localStorage.getItem('showCompleted') !== 'false'; // default true
         let lastShift = localStorage.getItem('lastShift') || getCurrentShift();
 
         // Cross-tab sync
@@ -576,7 +577,13 @@
                         renderTimeline();
                     }
                 } else if (event.data.type === 'shift-reset') {
-                    location.reload();
+                    // Reset task states without full page reload to preserve UI state (filters, etc.)
+                    allTasks.forEach(task => task.done = false);
+                    lastShift = getCurrentShift();
+                    localStorage.setItem('lastShift', lastShift);
+                    renderTimeline();
+                    showShiftChangeNotification(lastShift);
+                    console.log('✅ Tasks reset via cross-tab sync');
                 }
             };
         } catch (e) {
@@ -1017,8 +1024,33 @@
             }
         }
 
+        function restoreFilterUI() {
+            // Restore shift filter button state
+            const shiftButtons = document.querySelectorAll('.controls .btn');
+            shiftButtons.forEach(btn => {
+                btn.classList.remove('active');
+                const btnText = btn.textContent.trim();
+                if (currentFilter.shift === 'all' && btnText.includes('All Shifts')) {
+                    btn.classList.add('active');
+                } else if (currentFilter.shift === 'current' && btnText.includes('Current Shift')) {
+                    btn.classList.add('active');
+                } else if (currentFilter.shift === 'Night Shift' && btnText.includes('Night Shift')) {
+                    btn.classList.add('active');
+                } else if (currentFilter.shift === 'Day Shift' && btnText.includes('Day Shift')) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            // Restore desk filter dropdown
+            const deskFilter = document.getElementById('deskFilter');
+            if (deskFilter && currentFilter.desk) {
+                deskFilter.value = currentFilter.desk;
+            }
+        }
+
         function filterShift(shift) {
             currentFilter.shift = shift;
+            localStorage.setItem('currentFilter', JSON.stringify(currentFilter));
 
             document.querySelectorAll('.controls .btn').forEach(btn => {
                 btn.classList.remove('active');
@@ -1030,11 +1062,13 @@
 
         function filterDesk() {
             currentFilter.desk = document.getElementById('deskFilter').value;
+            localStorage.setItem('currentFilter', JSON.stringify(currentFilter));
             renderTimeline();
         }
 
         function toggleCompleted() {
             showCompleted = !showCompleted;
+            localStorage.setItem('showCompleted', showCompleted.toString());
             renderTimeline();
         }
 
@@ -1083,6 +1117,10 @@
             }
             
             await loadTasks();
+            
+            // Restore UI state from saved filter preferences
+            restoreFilterUI();
+            
             updateTimeDisplay();
             renderTimeline();
             checkShiftChange();
