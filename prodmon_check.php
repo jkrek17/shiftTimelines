@@ -10,6 +10,10 @@
  * 3. Returns list of task IDs that can be auto-completed (product was issued)
  */
 
+// Enable error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 0); // Don't display, but log them
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 
@@ -29,7 +33,6 @@ function getTaskProductMappings() {
     $config_content = file_get_contents($config_file);
     
     // Extract the SHIFT_TIMELINES object
-    // Remove the "const SHIFT_TIMELINES = " prefix and trailing semicolon
     $json_start = strpos($config_content, '{');
     $json_end = strrpos($config_content, '}');
     
@@ -40,10 +43,15 @@ function getTaskProductMappings() {
     $json_str = substr($config_content, $json_start, $json_end - $json_start + 1);
     
     // Fix JavaScript object to valid JSON
-    // Add quotes around unquoted keys
-    $json_str = preg_replace('/(\w+)\s*:/m', '"$1":', $json_str);
-    // Replace single quotes with double quotes
+    // First, replace single quotes with double quotes
     $json_str = str_replace("'", '"', $json_str);
+    
+    // Add quotes around unquoted keys (keys that aren't already quoted)
+    // Match word characters followed by colon, but not if preceded by a quote
+    $json_str = preg_replace('/(?<!["\w])(\w+)\s*:/m', '"$1":', $json_str);
+    
+    // Remove trailing commas before } or ]
+    $json_str = preg_replace('/,(\s*[\}\]])/', '$1', $json_str);
     
     $config = json_decode($json_str, true);
     
@@ -52,22 +60,23 @@ function getTaskProductMappings() {
     }
     
     // Build task ID -> productId mapping
-    $mappings = [];
+    $mappings = array();
     
     foreach ($config as $deskName => $deskConfig) {
         if (!isset($deskConfig['shifts'])) continue;
         
         foreach ($deskConfig['shifts'] as $shiftType => $tasks) {
+            if (!is_array($tasks)) continue;
             foreach ($tasks as $index => $task) {
                 if (!empty($task['productId'])) {
-                    $taskId = "{$deskName}-{$shiftType}-{$index}";
-                    $mappings[$taskId] = [
+                    $taskId = $deskName . '-' . $shiftType . '-' . $index;
+                    $mappings[$taskId] = array(
                         'productId' => $task['productId'],
                         'name' => $task['name'],
                         'deadline' => $task['deadline'],
                         'desk' => $deskName,
                         'shift' => $shiftType
-                    ];
+                    );
                 }
             }
         }
@@ -80,16 +89,16 @@ function getTaskProductMappings() {
  * Scrape the product monitor page
  */
 function scrapeProductMonitor($url) {
-    $context = stream_context_create([
-        'http' => [
+    $context = stream_context_create(array(
+        'http' => array(
             'timeout' => 15,
             'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        ],
-        'ssl' => [
+        ),
+        'ssl' => array(
             'verify_peer' => false,
             'verify_peer_name' => false
-        ]
-    ]);
+        )
+    ));
     
     $html = @file_get_contents($url, false, $context);
     
@@ -98,8 +107,8 @@ function scrapeProductMonitor($url) {
     }
     
     // Parse the HTML to find overdue/pending products
-    $overdue_products = [];
-    $overdue_with_times = [];
+    $overdue_products = array();
+    $overdue_with_times = array();
     
     // Pattern: Match OPC product codes
     $product_pattern = '/\b(OFF[A-Z0-9]{2,5}|HSF[A-Z]{2,4}[0-9]?|PY[AB][A-Z][0-9]{2}|P[WPJA][ABCK][MK]?[0-9]{2}|PJCK[0-9]{2}|PPCK[0-9]{2}|OFFN[0-9]{2})\b/i';
@@ -142,11 +151,11 @@ function scrapeProductMonitor($url) {
         }
     }
     
-    return [
+    return array(
         'products' => array_keys($overdue_products),
         'products_with_times' => array_keys($overdue_with_times),
         'html_length' => strlen($html)
-    ];
+    );
 }
 
 /**
@@ -201,12 +210,14 @@ try {
     $overdueWithTimes = array_flip($prodmonData['products_with_times']);
     
     // Determine which tasks can be auto-completed
-    $tasksToComplete = [];
+    $tasksToComplete = array();
     $currentIssueTime = getCurrentIssueTime();
     
     foreach ($taskMappings as $taskId => $taskInfo) {
         $productId = $taskInfo['productId'];
-        list($productCode, $issueTime) = explode('-', $productId);
+        $parts = explode('-', $productId);
+        $productCode = $parts[0];
+        $issueTime = isset($parts[1]) ? $parts[1] : '';
         
         // Check if this task's deadline is in the completion window
         if (!isTaskInWindow($taskInfo['deadline'], 60)) {
@@ -225,19 +236,19 @@ try {
         }
         
         if ($isIssued) {
-            $tasksToComplete[] = [
+            $tasksToComplete[] = array(
                 'taskId' => $taskId,
                 'productId' => $productId,
                 'name' => $taskInfo['name'],
                 'deadline' => $taskInfo['deadline'],
                 'desk' => $taskInfo['desk'],
                 'shift' => $taskInfo['shift']
-            ];
+            );
         }
     }
     
     // Return results
-    echo json_encode([
+    echo json_encode(array(
         'success' => true,
         'timestamp' => gmdate('c'),
         'current_issue_time' => $currentIssueTime,
@@ -246,12 +257,12 @@ try {
         'overdue_with_times' => $prodmonData['products_with_times'],
         'overdue_count' => count($prodmonData['products']),
         'total_monitored_tasks' => count($taskMappings)
-    ], JSON_PRETTY_PRINT);
+    ), JSON_PRETTY_PRINT);
     
 } catch (Exception $e) {
     http_response_code(500);
-    echo json_encode([
+    echo json_encode(array(
         'success' => false,
         'error' => $e->getMessage()
-    ]);
+    ));
 }

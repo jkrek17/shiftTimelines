@@ -1,3 +1,8 @@
+<?php
+// Enable error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -100,12 +105,12 @@ function getShiftInfo() {
     elseif ($hour >= 12 && $hour < 18) $issueTime = '12Z';
     else $issueTime = '18Z';
     
-    return [
+    return array(
         'shift' => $shift,
         'issueTime' => $issueTime,
         'utcTime' => gmdate('H:i:s'),
         'utcDate' => gmdate('Y-m-d')
-    ];
+    );
 }
 
 /**
@@ -115,7 +120,7 @@ function getTasksFromConfig() {
     $config_file = __DIR__ . '/config.js';
     
     if (!file_exists($config_file)) {
-        return ['error' => 'config.js not found'];
+        return array('error' => 'config.js not found');
     }
     
     $config_content = file_get_contents($config_file);
@@ -124,17 +129,25 @@ function getTasksFromConfig() {
     $json_end = strrpos($config_content, '}');
     
     if ($json_start === false || $json_end === false) {
-        return ['error' => 'Could not parse config.js'];
+        return array('error' => 'Could not parse config.js');
     }
     
     $json_str = substr($config_content, $json_start, $json_end - $json_start + 1);
-    $json_str = preg_replace('/(\w+)\s*:/m', '"$1":', $json_str);
+    
+    // Fix JavaScript object to valid JSON
+    // First, replace single quotes with double quotes
     $json_str = str_replace("'", '"', $json_str);
+    
+    // Add quotes around unquoted keys
+    $json_str = preg_replace('/(?<!["\w])(\w+)\s*:/m', '"$1":', $json_str);
+    
+    // Remove trailing commas before } or ]
+    $json_str = preg_replace('/,(\s*[\}\]])/', '$1', $json_str);
     
     $config = json_decode($json_str, true);
     
     if ($config === null) {
-        return ['error' => 'JSON parse error: ' . json_last_error_msg()];
+        return array('error' => 'JSON parse error: ' . json_last_error_msg());
     }
     
     return $config;
@@ -144,21 +157,24 @@ function getTasksFromConfig() {
  * Get tasks for current shift with productId
  */
 function getCurrentShiftTasks($config, $shiftInfo) {
-    $tasks = [];
+    $tasks = array();
     
     foreach ($config as $deskName => $deskConfig) {
         if (!isset($deskConfig['shifts'][$shiftInfo['shift']])) continue;
         
-        foreach ($deskConfig['shifts'][$shiftInfo['shift']] as $index => $task) {
-            $taskId = "{$deskName}-{$shiftInfo['shift']}-{$index}";
-            $tasks[] = [
+        $shiftTasks = $deskConfig['shifts'][$shiftInfo['shift']];
+        if (!is_array($shiftTasks)) continue;
+        
+        foreach ($shiftTasks as $index => $task) {
+            $taskId = $deskName . '-' . $shiftInfo['shift'] . '-' . $index;
+            $tasks[] = array(
                 'taskId' => $taskId,
                 'desk' => $deskName,
-                'name' => $task['name'],
-                'deadline' => $task['deadline'],
-                'productId' => $task['productId'] ?? null,
-                'link' => $task['link'] ?? ''
-            ];
+                'name' => isset($task['name']) ? $task['name'] : '',
+                'deadline' => isset($task['deadline']) ? $task['deadline'] : '',
+                'productId' => isset($task['productId']) ? $task['productId'] : null,
+                'link' => isset($task['link']) ? $task['link'] : ''
+            );
         }
     }
     
@@ -174,25 +190,25 @@ function getCurrentShiftTasks($config, $shiftInfo) {
  * Scrape prodmon page
  */
 function scrapeProdmon($url) {
-    $context = stream_context_create([
-        'http' => [
+    $context = stream_context_create(array(
+        'http' => array(
             'timeout' => 15,
             'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        ],
-        'ssl' => [
+        ),
+        'ssl' => array(
             'verify_peer' => false,
             'verify_peer_name' => false
-        ]
-    ]);
+        )
+    ));
     
     $html = @file_get_contents($url, false, $context);
     
     if ($html === false) {
-        return ['error' => 'Failed to fetch prodmon page', 'html' => ''];
+        return array('error' => 'Failed to fetch prodmon page', 'html' => '');
     }
     
     // Extract overdue products
-    $overdue = [];
+    $overdue = array();
     $product_pattern = '/\b(OFF[A-Z0-9]{2,5}|HSF[A-Z]{2,4}[0-9]?|PY[AB][A-Z][0-9]{2}|P[WPJA][ABCK][MK]?[0-9]{2}|PJCK[0-9]{2}|PPCK[0-9]{2}|OFFN[0-9]{2})\b/i';
     
     preg_match_all($product_pattern, $html, $matches);
@@ -201,7 +217,7 @@ function scrapeProdmon($url) {
     }
     
     // Try to get product + time combinations
-    $overdueWithTimes = [];
+    $overdueWithTimes = array();
     preg_match_all('/<tr[^>]*>(.*?)<\/tr>/is', $html, $rows);
     foreach ($rows[1] as $row) {
         if (preg_match($product_pattern, $row, $prod_match)) {
@@ -212,12 +228,12 @@ function scrapeProdmon($url) {
         }
     }
     
-    return [
+    return array(
         'products' => array_values($overdue),
         'products_with_times' => array_unique($overdueWithTimes),
         'html' => $html,
         'html_length' => strlen($html)
-    ];
+    );
 }
 
 // Get data
@@ -279,7 +295,7 @@ $overdueWithTimesSet = array_flip($prodmonData['products_with_times'] ?? []);
         <div class="card">
             <h2>📋 Current Shift Tasks with Product IDs</h2>
             <?php 
-            $monitoredTasks = array_filter($currentTasks, fn($t) => !empty($t['productId']));
+            $monitoredTasks = array_filter($currentTasks, function($t) { return !empty($t['productId']); });
             ?>
             <p>Found <?= count($monitoredTasks) ?> monitored tasks (with productId) for <?= $shiftInfo['shift'] ?></p>
             
@@ -326,15 +342,15 @@ $overdueWithTimesSet = array_flip($prodmonData['products_with_times'] ?? []);
         <p>This is what <code>prodmon_check.php</code> would return:</p>
         <pre><?php
         // Simulate the API response
-        $apiResponse = [
+        $apiResponse = array(
             'success' => true,
             'timestamp' => gmdate('c'),
             'current_shift' => $shiftInfo['shift'],
             'current_issue_time' => $shiftInfo['issueTime'],
-            'overdue_products' => $prodmonData['products'] ?? [],
-            'overdue_with_times' => $prodmonData['products_with_times'] ?? [],
-            'overdue_count' => count($prodmonData['products'] ?? [])
-        ];
+            'overdue_products' => isset($prodmonData['products']) ? $prodmonData['products'] : array(),
+            'overdue_with_times' => isset($prodmonData['products_with_times']) ? $prodmonData['products_with_times'] : array(),
+            'overdue_count' => isset($prodmonData['products']) ? count($prodmonData['products']) : 0
+        );
         echo htmlspecialchars(json_encode($apiResponse, JSON_PRETTY_PRINT));
         ?></pre>
     </div>
