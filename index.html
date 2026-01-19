@@ -1165,36 +1165,13 @@
                 
                 lastProdmonCheck = new Date();
                 
-                // Get list of overdue products (NOT yet issued)
-                const overdueProducts = new Set(data.overdue_products || []);
-                const overdueWithTimes = new Set(data.overdue_with_times || []);
-                
+                // PHP returns list of tasks that should be auto-completed
+                const tasksToComplete = data.tasks_to_complete || [];
                 let autoCheckedCount = 0;
                 
-                // Check each task with a productId
-                for (const task of allTasks) {
-                    if (!task.productId || task.done) continue;
-                    
-                    // Parse productId: "OFFPZ5-00Z" -> code="OFFPZ5", time="00Z"
-                    const [productCode, issueTime] = task.productId.split('-');
-                    
-                    // Product is issued (complete) if it's NOT in the overdue list
-                    let isIssued = false;
-                    
-                    // First check exact match with time
-                    if (overdueWithTimes.size > 0) {
-                        isIssued = !overdueWithTimes.has(task.productId);
-                    } else {
-                        // Fall back to just checking product code
-                        isIssued = !overdueProducts.has(productCode);
-                    }
-                    
-                    // Only auto-check if the deadline has passed or is within 30 mins
-                    const currentDecimal = getCurrentUTCDecimal();
-                    const timeLeft = calculateTimeLeft(currentDecimal, task.deadlineDecimal);
-                    
-                    if (isIssued && timeLeft < 0.5) {
-                        // Product was issued, auto-mark as complete
+                for (const taskInfo of tasksToComplete) {
+                    const task = allTasks.find(t => t.id === taskInfo.taskId);
+                    if (task && !task.done) {
                         task.done = true;
                         task.autoChecked = true;
                         autoCheckedCount++;
@@ -1209,7 +1186,7 @@
                     renderTimeline();
                 }
                 
-                updateProdmonStatus(true, data.count);
+                updateProdmonStatus(true, data.overdue_count, data.total_monitored_tasks);
                 
             } catch (error) {
                 console.error('Product monitor check failed:', error);
@@ -1217,14 +1194,14 @@
             }
         }
         
-        function updateProdmonStatus(success, overdueCount = 0) {
+        function updateProdmonStatus(success, overdueCount = 0, totalMonitored = 0) {
             const statusSync = document.getElementById('statusSync');
             if (lastProdmonCheck) {
                 const timeStr = lastProdmonCheck.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
                 if (success) {
-                    statusSync.textContent = `Synced: ${timeStr} | ${overdueCount} pending`;
+                    statusSync.textContent = `Synced: ${timeStr} | ${overdueCount} pending products`;
                 } else {
-                    statusSync.textContent = `Synced: ${timeStr} | Monitor offline`;
+                    statusSync.textContent = `Synced: ${timeStr} | Monitor unavailable`;
                 }
             }
         }
