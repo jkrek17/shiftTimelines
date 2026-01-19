@@ -406,14 +406,36 @@
         </div>
     </div>
 
-    <script src="config.js"></script>
     <script>
+        // Load config with cache-busting
         let currentDesk = null;
         let currentShift = 'Night Shift';
-        let configData = JSON.parse(JSON.stringify(SHIFT_TIMELINES)); // Deep copy
+        let configData = null;
+        
+        async function loadConfig() {
+            // Add timestamp to prevent caching
+            const cacheBuster = Date.now();
+            const script = document.createElement('script');
+            script.src = `config.js?v=${cacheBuster}`;
+            
+            return new Promise((resolve, reject) => {
+                script.onload = () => {
+                    configData = JSON.parse(JSON.stringify(SHIFT_TIMELINES)); // Deep copy
+                    resolve();
+                };
+                script.onerror = () => reject(new Error('Failed to load config'));
+                document.head.appendChild(script);
+            });
+        }
 
-        function init() {
-            renderDeskList();
+        async function init() {
+            try {
+                await loadConfig();
+                renderDeskList();
+            } catch (error) {
+                console.error('Failed to load configuration:', error);
+                showStatus('❌ Failed to load configuration', true);
+            }
         }
 
         function renderDeskList() {
