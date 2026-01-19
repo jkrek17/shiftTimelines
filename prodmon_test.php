@@ -187,24 +187,74 @@ function getCurrentShiftTasks($config, $shiftInfo) {
 }
 
 /**
- * Scrape prodmon page
+ * Scrape prodmon page - try cURL first, then file_get_contents
  */
 function scrapeProdmon($url) {
-    $context = stream_context_create(array(
-        'http' => array(
-            'timeout' => 15,
-            'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        ),
-        'ssl' => array(
-            'verify_peer' => false,
-            'verify_peer_name' => false
-        )
-    ));
+    $html = false;
+    $error_msg = '';
     
-    $html = @file_get_contents($url, false, $context);
+    // Try cURL first (usually more reliable)
+    if (function_exists('curl_init')) {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
+        
+        $html = curl_exec($ch);
+        
+        if ($html === false) {
+            $error_msg = 'cURL error: ' . curl_error($ch) . ' (code: ' . curl_errno($ch) . ')';
+        }
+        
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if ($html !== false && $http_code != 200) {
+            $error_msg = 'HTTP error: ' . $http_code;
+            $html = false;
+        }
+    } else {
+        $error_msg = 'cURL not available, trying file_get_contents...';
+    }
+    
+    // Fallback to file_get_contents
+    if ($html === false) {
+        $context = stream_context_create(array(
+            'http' => array(
+                'timeout' => 30,
+                'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'ignore_errors' => true
+            ),
+            'ssl' => array(
+                'verify_peer' => false,
+                'verify_peer_name' => false
+            )
+        ));
+        
+        $html = @file_get_contents($url, false, $context);
+        
+        if ($html === false) {
+            $error_msg .= ' | file_get_contents also failed';
+            if (isset($http_response_header)) {
+                $error_msg .= ' | Response: ' . implode(', ', array_slice($http_response_header, 0, 3));
+            }
+        }
+    }
     
     if ($html === false) {
-        return array('error' => 'Failed to fetch prodmon page', 'html' => '');
+        return array(
+            'error' => 'Failed to fetch prodmon page: ' . $error_msg,
+            'html' => '',
+            'debug' => array(
+                'curl_available' => function_exists('curl_init'),
+                'allow_url_fopen' => ini_get('allow_url_fopen'),
+                'url' => $url
+            )
+        );
     }
     
     // Extract overdue products
@@ -266,6 +316,14 @@ $overdueWithTimesSet = array_flip($prodmonData['products_with_times'] ?? []);
             <h2>📡 Prodmon Scrape Results</h2>
             <?php if (isset($prodmonData['error'])): ?>
                 <p class="status-bad">❌ <?= htmlspecialchars($prodmonData['error']) ?></p>
+                <?php if (isset($prodmonData['debug'])): ?>
+                <h3>Debug Info:</h3>
+                <ul>
+                    <li>cURL available: <?= $prodmonData['debug']['curl_available'] ? 'Yes' : 'No' ?></li>
+                    <li>allow_url_fopen: <?= $prodmonData['debug']['allow_url_fopen'] ? 'Yes' : 'No' ?></li>
+                    <li>URL: <?= htmlspecialchars($prodmonData['debug']['url']) ?></li>
+                </ul>
+                <?php endif; ?>
             <?php else: ?>
                 <p class="status-good">✅ Successfully fetched prodmon page (<?= number_format($prodmonData['html_length']) ?> bytes)</p>
                 

@@ -86,24 +86,49 @@ function getTaskProductMappings() {
 }
 
 /**
- * Scrape the product monitor page
+ * Scrape the product monitor page - try cURL first, then file_get_contents
  */
 function scrapeProductMonitor($url) {
-    $context = stream_context_create(array(
-        'http' => array(
-            'timeout' => 15,
-            'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        ),
-        'ssl' => array(
-            'verify_peer' => false,
-            'verify_peer_name' => false
-        )
-    ));
+    $html = false;
+    $error_msg = '';
     
-    $html = @file_get_contents($url, false, $context);
+    // Try cURL first
+    if (function_exists('curl_init')) {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
+        
+        $html = curl_exec($ch);
+        
+        if ($html === false) {
+            $error_msg = 'cURL error: ' . curl_error($ch);
+        }
+        curl_close($ch);
+    }
+    
+    // Fallback to file_get_contents
+    if ($html === false) {
+        $context = stream_context_create(array(
+            'http' => array(
+                'timeout' => 30,
+                'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            ),
+            'ssl' => array(
+                'verify_peer' => false,
+                'verify_peer_name' => false
+            )
+        ));
+        
+        $html = @file_get_contents($url, false, $context);
+    }
     
     if ($html === false) {
-        throw new Exception('Failed to fetch product monitor page');
+        throw new Exception('Failed to fetch product monitor page: ' . $error_msg);
     }
     
     // Parse the HTML to find overdue/pending products
