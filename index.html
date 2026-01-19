@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shift Timeline</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕐</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #006994 0%, #0891b2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #0c4a6e 0%, #0891b2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px 12px 0 0;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        }
+
+        .current-time {
+            font-size: 48px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .current-date {
+            font-size: 24px;
+            text-align: center;
+            margin-bottom: 15px;
+            opacity: 0.9;
+        }
+
+        .current-shift {
+            font-size: 20px;
+            text-align: center;
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 25px;
+            display: inline-block;
+            margin: 0 auto;
+            display: block;
+            width: fit-content;
+        }
+
+        .shift-info {
+            font-size: 14px;
+            text-align: center;
+            margin-top: 10px;
+            opacity: 0.8;
+        }
+
+        /* Shift change notification */
+        .shift-notification {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #0c4a6e 0%, #0891b2 100%);
+            color: white;
+            padding: 30px 50px;
+            border-radius: 15px;
+            font-size: 24px;
+            font-weight: bold;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            z-index: 10000;
+            text-align: center;
+        }
+
+        .shift-notification-subtitle {
+            font-size: 18px;
+            margin-top: 10px;
+            opacity: 0.9;
+        }
+
+        /* Config button - floating in top right */
+        .config-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #0c4a6e 0%, #0891b2 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .config-button:hover {
+            transform: rotate(90deg) scale(1.1);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+        }
+
+        .config-button:active {
+            transform: rotate(90deg) scale(0.95);
+        }
+
+        /* Controls */
+        .controls {
+            background: #0c4a6e;
+            padding: 15px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Legend */
+        .legend {
+            background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+            padding: 15px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            font-size: 14px;
+            border-bottom: 3px solid #0c4a6e;
+            box-shadow: inset 0 -2px 4px rgba(0,0,0,0.1);
+        }
+
+        .legend-title {
+            font-weight: 700;
+            font-size: 16px;
+            color: #0c4a6e;
+            margin-right: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            font-weight: 600;
+            transition: transform 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .legend-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        .legend-icon {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .legend-color {
+            width: 35px;
+            height: 20px;
+            border-radius: 6px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .btn {
+            padding: 10px 18px;
+            background: white;
+            color: #0c4a6e;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+            background: #f0f9ff;
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn.active {
+            background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(8, 145, 178, 0.4);
+        }
+
+        .btn.danger {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+        }
+
+        select {
+            padding: 12px 20px;
+            font-size: 15px;
+            border: none;
+            border-radius: 8px;
+            background: white;
+            color: #0d47a1;
+            cursor: pointer;
+            font-weight: 600;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        }
+
+        /* Summary Stats */
+        .summary {
+            background: white;
+            padding: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            border-bottom: 3px solid #0d47a1;
+        }
+
+        .stat-card {
+            padding: 15px 30px;
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+            text-align: center;
+            min-width: 120px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            transition: transform 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.25);
+        }
+
+        .stat-card .label {
+            font-size: 13px;
+            opacity: 0.95;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-card .value {
+            font-size: 32px;
+            font-weight: 700;
+        }
+
+        .stat-overdue { background: linear-gradient(135deg, #616161 0%, #424242 100%); }
+        .stat-critical { background: linear-gradient(135deg, #e53935 0%, #c62828 100%); }
+        .stat-urgent { background: linear-gradient(135deg, #ff6f00 0%, #e65100 100%); }
+        .stat-warning { background: linear-gradient(135deg, #fdd835 0%, #fbc02d 100%); color: #000; }
+        .stat-good { background: linear-gradient(135deg, #66bb6a 0%, #43a047 100%); }
+        .stat-completed { background: linear-gradient(135deg, #42a5f5 0%, #1e88e5 100%); }
+
+        /* Timeline Table */
+        .timeline-container {
+            background: white;
+            border-radius: 0 0 12px 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        th {
+            padding: 16px;
+            text-align: left;
+            font-size: 15px;
+            font-weight: 600;
+            border-bottom: 3px solid #0d47a1;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        th.center, td.center {
+            text-align: center;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #e0e0e0;
+            transition: background 0.2s ease;
+        }
+
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        tbody tr.completed {
+            opacity: 0.5;
+            text-decoration: line-through;
+        }
+
+        td {
+            padding: 14px 16px;
+            font-size: 15px;
+        }
+
+        .desk-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            color: #0d47a1;
+            border: 1px solid #90caf9;
+        }
+
+        .deadline-cell, .time-left-cell {
+            font-weight: bold;
+            font-size: 16px;
+            padding: 10px 15px;
+            border: 2px solid rgba(0,0,0,0.1);
+        }
+
+        /* Color coding for urgency */
+        .overdue { background: #64748b; color: white; }
+        .critical { background: #dc2626; color: white; }
+        .urgent { background: #ea580c; color: white; }
+        .warning { background: #eab308; color: black; }
+        .good { background: #10b981; color: white; }
+
+        /* Checkbox */
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        /* Product links */
+        .product-link {
+            margin-left: 8px;
+            text-decoration: none;
+            font-size: 14px;
+            transition: transform 0.2s ease;
+            display: inline-block;
+        }
+
+        .product-link:hover {
+            transform: scale(1.2);
+        }
+
+        /* Status indicator */
+        .status-indicator {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 12px 24px;
+            border-radius: 25px;
+            color: white;
+            font-weight: 700;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 1000;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+        }
+
+        .status-main {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 15px;
+        }
+
+        .status-sync {
+            font-size: 11px;
+            opacity: 0.9;
+            font-weight: 500;
+        }
+
+        .status-online { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+        .status-offline { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); }
+        .status-saving { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .current-time { font-size: 32px; }
+            .current-date { font-size: 18px; }
+            .current-shift { font-size: 16px; }
+
+            table { font-size: 14px; }
+            th, td { padding: 8px; }
+
+            .btn { padding: 10px 18px; font-size: 14px; }
+            .stat-card { min-width: 100px; padding: 12px 20px; }
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="status-indicator status-online" id="statusIndicator">
+        <div class="status-main">● Connected</div>
+        <div class="status-sync" id="statusSync">Synced: --</div>
+    </div>
+
+    <!-- Config Button - Top Right -->
+    <button class="config-button" onclick="window.location.href='config-editor.html'" title="Edit Configuration">
+        ⚙️
+    </button>
+
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="current-time" id="currentTime">--:--:-- UTC</div>
+            <div class="current-date" id="currentDate">Loading...</div>
+            <div class="current-shift" id="currentShift">⏰ Determining shift...</div>
+            <div class="shift-info" id="shiftInfo"></div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <button type="button" class="btn active" onclick="filterShift('all')">
+                <span>👁️</span> All Shifts
+            </button>
+            <button type="button" class="btn" onclick="filterShift('current')">
+                <span>⚡</span> Current Shift
+            </button>
+            <button type="button" class="btn" onclick="filterShift('Night Shift')">
+                <span>🌙</span> Night Shift
+            </button>
+            <button type="button" class="btn" onclick="filterShift('Day Shift')">
+                <span>☀️</span> Day Shift
+            </button>
+            <select id="deskFilter" onchange="filterDesk()">
+                <option value="all">📋 All Desks</option>
+            </select>
+            <button type="button" class="btn" onclick="toggleCompleted()">
+                <span>✓</span> Show/Hide Completed
+            </button>
+            <button type="button" class="btn danger" onclick="resetAllTasks()">
+                <span>🔄</span> Reset All Tasks
+            </button>
+        </div>
+
+        <!-- Legend -->
+        <div class="legend">
+            <div class="legend-title">🎯 Status Legend</div>
+            <div class="legend-item">
+                <div class="legend-icon">⏱️</div>
+                <div class="legend-color overdue"></div>
+                <span>Overdue</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-icon">🚨</div>
+                <div class="legend-color critical"></div>
+                <span>Critical (&lt;15 min)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-icon">⚠️</div>
+                <div class="legend-color urgent"></div>
+                <span>Urgent (&lt;30 min)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-icon">⏰</div>
+                <div class="legend-color warning"></div>
+                <span>Warning (&lt;1 hour)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-icon">✅</div>
+                <div class="legend-color good"></div>
+                <span>On Track (&gt;1 hour)</span>
+            </div>
+        </div>
+
+        <!-- Summary Stats -->
+        <div class="summary" id="summary"></div>
+
+        <!-- Timeline Table -->
+        <div class="timeline-container">
+            <table id="timelineTable">
+                <thead>
+                    <tr>
+                        <th scope="col">Desk</th>
+                        <th scope="col">Task</th>
+                        <th scope="col" class="center">Done</th>
+                        <th scope="col" class="center">Deadline</th>
+                        <th scope="col" class="center">Time Left</th>
+                    </tr>
+                </thead>
+                <tbody id="timelineBody">
+                    <tr><td colspan="5" class="loading">Loading timeline...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script>
+        // API Configuration
+        const API_URL = 'api.php';
+
+        // State
+        let allTasks = [];
+        let filteredTasks = [];
+        let currentFilter = { shift: 'all', desk: 'all' };
+        let showCompleted = true;
+        let lastShift = localStorage.getItem('lastShift') || getCurrentShift();
+
+        // Cross-tab sync
+        let syncChannel = null;
+        try {
+            syncChannel = new BroadcastChannel('timeline-sync');
+            syncChannel.onmessage = (event) => {
+                if (event.data.type === 'task-update') {
+                    const task = allTasks.find(t => t.id === event.data.taskId);
+                    if (task) {
+                        task.done = event.data.done;
+                        renderTimeline();
+                    }
+                } else if (event.data.type === 'shift-reset') {
+                    location.reload();
+                }
+            };
+        } catch (e) {
+            console.log('BroadcastChannel not supported');
+        }
+
+        // Check for shift change and auto-reset
+        async function checkShiftChange() {
+            const currentShift = getCurrentShift();
+
+            if (lastShift !== currentShift) {
+                console.log(`🔄 Automatic shift change: ${lastShift} → ${currentShift}`);
+
+                try {
+                    updateStatus('saving');
+
+                    const response = await fetch(`${API_URL}?action=reset`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        console.log('✅ Tasks automatically reset for new shift');
+
+                        allTasks.forEach(task => task.done = false);
+                        localStorage.clear();
+                        lastShift = currentShift;
+                        localStorage.setItem('lastShift', currentShift);
+
+                        if (syncChannel) {
+                            syncChannel.postMessage({ type: 'shift-reset' });
+                        }
+
+                        const now = new Date();
+                        const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                        updateStatus('online', timeStr);
+
+                        renderTimeline();
+                        showShiftChangeNotification(currentShift);
+                    }
+                } catch (error) {
+                    console.error('Failed to auto-reset tasks:', error);
+                }
+            }
+        }
+
+        function showShiftChangeNotification(newShift) {
+            const notification = document.createElement('div');
+            notification.className = 'shift-notification';
+            notification.innerHTML = `
+                🔄 Shift Change<br>
+                <div class="shift-notification-subtitle">
+                    ${newShift} - All tasks reset
+                </div>
+            `;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.transition = 'opacity 0.5s ease';
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 500);
+            }, 3000);
+        }
+
+        let isOnline = true;
+
+        function parseTimeToDecimal(timeString) {
+            if (!timeString) return 0;
+            const parts = timeString.split(':');
+            const hours = parseInt(parts[0]);
+            const minutes = parseInt(parts[1]) || 0;
+            return hours + (minutes / 60);
+        }
+
+        function getCurrentUTCDecimal() {
+            const now = new Date();
+            return now.getUTCHours() + (now.getUTCMinutes() / 60);
+        }
+
+        function getCurrentShift() {
+            const currentUTC = getCurrentUTCDecimal();
+            return (currentUTC >= 0 && currentUTC < 12) ? 'Night Shift' : 'Day Shift';
+        }
+
+        function calculateTimeLeft(currentDecimal, deadlineDecimal) {
+            let diff = deadlineDecimal - currentDecimal;
+            if (diff < -12) {
+                diff += 24;
+            }
+            return diff;
+        }
+
+        function formatTimeLeft(hours) {
+            const isNegative = hours < 0;
+            const absHours = Math.abs(hours);
+            const h = Math.floor(absHours);
+            const m = Math.round((absHours - h) * 60);
+            const timeStr = `${h}:${m.toString().padStart(2, '0')}`;
+            return isNegative ? `-${timeStr}` : timeStr;
+        }
+
+        function getUrgencyClass(timeLeftHours) {
+            if (timeLeftHours < 0) return 'overdue';
+            if (timeLeftHours < 0.25) return 'critical';
+            if (timeLeftHours < 0.5) return 'urgent';
+            if (timeLeftHours < 1) return 'warning';
+            return 'good';
+        }
+
+        function updateStatus(status, syncTime = null) {
+            const indicator = document.getElementById('statusIndicator');
+            const syncDiv = document.getElementById('statusSync');
+            indicator.className = `status-indicator status-${status}`;
+
+            const text = {
+                'online': '● Connected',
+                'offline': '● Offline',
+                'saving': '⏳ Saving...'
+            };
+
+            indicator.querySelector('.status-main').textContent = text[status] || '● Unknown';
+
+            if (syncTime) {
+                syncDiv.textContent = `Synced: ${syncTime}`;
+            }
+        }
+
+        async function loadTaskStatesFromServer() {
+            try {
+                const response = await fetch(API_URL);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    console.warn('API returned non-JSON response.');
+                    isOnline = false;
+                    updateStatus('offline');
+                    return {};
+                }
+
+                const result = await response.json();
+
+                if (result.success) {
+                    isOnline = true;
+                    const now = new Date();
+                    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                    updateStatus('online', timeStr);
+                    return result.data;
+                } else {
+                    console.error('API returned error:', result.error);
+                    isOnline = false;
+                    updateStatus('offline');
+                    return {};
+                }
+            } catch (error) {
+                console.error('Failed to load from server:', error);
+                isOnline = false;
+                updateStatus('offline');
+            }
+            return {};
+        }
+
+        async function saveTaskToServer(taskId, done) {
+            try {
+                updateStatus('saving');
+
+                const response = await fetch(`${API_URL}?action=save`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ taskId, done })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    isOnline = true;
+                    const now = new Date();
+                    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                    updateStatus('online', timeStr);
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                console.error('Failed to save to server:', error);
+                isOnline = false;
+                updateStatus('offline');
+                localStorage.setItem(taskId, JSON.stringify(done));
+            }
+        }
+
+        async function resetAllTasksOnServer() {
+            if (!confirm('Are you sure you want to reset all task states? This will uncheck all completed tasks.')) {
+                return;
+            }
+
+            try {
+                updateStatus('saving');
+
+                const response = await fetch(`${API_URL}?action=reset`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    isOnline = true;
+                    const now = new Date();
+                    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                    updateStatus('online', timeStr);
+
+                    allTasks.forEach(task => task.done = false);
+                    localStorage.clear();
+
+                    if (syncChannel) {
+                        syncChannel.postMessage({ type: 'shift-reset' });
+                    }
+
+                    renderTimeline();
+                    alert('✅ All tasks have been reset!');
+                }
+            } catch (error) {
+                console.error('Failed to reset tasks:', error);
+                alert('❌ Failed to reset tasks. Please try again.');
+            }
+        }
+
+        async function loadTasks() {
+            const serverStates = await loadTaskStatesFromServer();
+
+            allTasks = [];
+
+            Object.keys(SHIFT_TIMELINES).forEach(deskName => {
+                const deskConfig = SHIFT_TIMELINES[deskName];
+
+                Object.keys(deskConfig.shifts).forEach(shiftType => {
+                    const tasks = deskConfig.shifts[shiftType];
+
+                    tasks.forEach((task, index) => {
+                        if (task.deadline) {
+                            const taskId = `${deskName}-${shiftType}-${index}`;
+
+                            let done = task.done;
+                            if (serverStates[taskId]) {
+                                done = serverStates[taskId].done;
+                            } else {
+                                const localState = localStorage.getItem(taskId);
+                                if (localState) {
+                                    done = JSON.parse(localState);
+                                }
+                            }
+
+                            allTasks.push({
+                                id: taskId,
+                                desk: deskName,
+                                name: task.name,
+                                deadline: task.deadline,
+                                deadlineDecimal: parseTimeToDecimal(task.deadline),
+                                shift: shiftType,
+                                done: done,
+                                isBackup: deskName === 'HFO Backup',
+                                link: task.link || ''
+                            });
+                        }
+                    });
+                });
+            });
+
+            allTasks.sort((a, b) => a.deadlineDecimal - b.deadlineDecimal);
+
+            // Populate desk filter with custom order
+            const deskFilter = document.getElementById('deskFilter');
+            
+            // Define custom desk order
+            const deskOrder = [
+                'Pac Regional',
+                'Pac High Seas',
+                'Atl Regional',
+                'Atl High Seas',
+                'Outlook',
+                'HFO Backup'
+            ];
+            
+            // Get unique desks from tasks
+            const availableDesks = [...new Set(allTasks.map(t => t.desk))];
+            
+            // Add desks in specified order (only if they have tasks)
+            deskOrder.forEach(desk => {
+                if (availableDesks.includes(desk)) {
+                    const option = document.createElement('option');
+                    option.value = desk;
+                    option.textContent = desk;
+                    deskFilter.appendChild(option);
+                }
+            });
+            
+            // Add any remaining desks that weren't in the order list
+            availableDesks.forEach(desk => {
+                if (!deskOrder.includes(desk)) {
+                    const option = document.createElement('option');
+                    option.value = desk;
+                    option.textContent = desk;
+                    deskFilter.appendChild(option);
+                }
+            });
+        }
+
+        function updateTimeDisplay() {
+            const now = new Date();
+            const timeStr = now.toUTCString().split(' ')[4];
+            const dateStr = now.toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                timeZone: 'UTC'
+            });
+            const shift = getCurrentShift();
+
+            document.getElementById('currentTime').textContent = `${timeStr} UTC`;
+            document.getElementById('currentDate').textContent = dateStr;
+            document.getElementById('currentShift').textContent = `⏰ ${shift}`;
+
+            const currentUTC = getCurrentUTCDecimal();
+            let hoursUntilChange;
+            let nextShiftTime;
+
+            if (shift === 'Night Shift') {
+                hoursUntilChange = 12 - currentUTC;
+                nextShiftTime = '12:00 UTC';
+            } else {
+                hoursUntilChange = 24 - currentUTC;
+                nextShiftTime = '00:00 UTC';
+            }
+
+            const hours = Math.floor(hoursUntilChange);
+            const minutes = Math.round((hoursUntilChange - hours) * 60);
+
+            document.getElementById('shiftInfo').textContent =
+                `Next shift change in ${hours}h ${minutes}m (at ${nextShiftTime})`;
+        }
+
+        function renderTimeline() {
+            const tbody = document.getElementById('timelineBody');
+            const currentDecimal = getCurrentUTCDecimal();
+
+            filteredTasks = allTasks.filter(task => {
+                if (currentFilter.shift === 'current') {
+                    if (task.shift !== getCurrentShift()) return false;
+                } else if (currentFilter.shift !== 'all') {
+                    if (task.shift !== currentFilter.shift) return false;
+                }
+
+                if (currentFilter.desk !== 'all') {
+                    if (task.desk !== currentFilter.desk) return false;
+                } else {
+                    if (task.isBackup) return false;
+                }
+
+                if (!showCompleted && task.done) {
+                    return false;
+                }
+
+                return true;
+            });
+
+            const stats = {
+                overdue: 0,
+                critical: 0,
+                urgent: 0,
+                warning: 0,
+                good: 0,
+                completed: 0
+            };
+
+            filteredTasks.forEach(task => {
+                if (task.done) {
+                    stats.completed++;
+                } else {
+                    const timeLeft = calculateTimeLeft(currentDecimal, task.deadlineDecimal);
+                    const urgency = getUrgencyClass(timeLeft);
+                    stats[urgency]++;
+                }
+            });
+
+            const summaryHtml = `
+                ${stats.completed > 0 ? `<div class="stat-card stat-completed"><div class="label">Completed</div><div class="value">${stats.completed}</div></div>` : ''}
+                ${stats.overdue > 0 ? `<div class="stat-card stat-overdue"><div class="label">Overdue</div><div class="value">${stats.overdue}</div></div>` : ''}
+                ${stats.critical > 0 ? `<div class="stat-card stat-critical"><div class="label">Critical</div><div class="value">${stats.critical}</div></div>` : ''}
+                ${stats.urgent > 0 ? `<div class="stat-card stat-urgent"><div class="label">Urgent</div><div class="value">${stats.urgent}</div></div>` : ''}
+                ${stats.warning > 0 ? `<div class="stat-card stat-warning"><div class="label">Warning</div><div class="value">${stats.warning}</div></div>` : ''}
+                <div class="stat-card stat-good"><div class="label">On Track</div><div class="value">${stats.good}</div></div>
+            `;
+            document.getElementById('summary').innerHTML = summaryHtml;
+
+            if (filteredTasks.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="loading">No tasks match the current filter.</td></tr>';
+                return;
+            }
+
+            const rows = filteredTasks.map(task => {
+                const timeLeft = calculateTimeLeft(currentDecimal, task.deadlineDecimal);
+                const urgency = getUrgencyClass(timeLeft);
+                const completedClass = task.done ? 'completed' : '';
+
+                return `
+                    <tr class="${completedClass}">
+                        <td><span class="desk-badge">${task.desk}</span></td>
+                        <td>
+                            ${task.name}
+                            ${task.link ? `<a href="${task.link}" target="_blank" class="product-link" title="View product">🔗</a>` : ''}
+                        </td>
+                        <td class="center">
+                            <input type="checkbox"
+                                   ${task.done ? 'checked' : ''}
+                                   onchange="toggleTask('${task.id}')">
+                        </td>
+                        <td class="center deadline-cell ${urgency}">${task.deadline}</td>
+                        <td class="center time-left-cell ${urgency}">${formatTimeLeft(timeLeft)}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            tbody.innerHTML = rows;
+        }
+
+        function toggleTask(taskId) {
+            const task = allTasks.find(t => t.id === taskId);
+            if (task) {
+                task.done = !task.done;
+                saveTaskToServer(taskId, task.done);
+                renderTimeline();
+            }
+        }
+
+        function filterShift(shift) {
+            currentFilter.shift = shift;
+
+            document.querySelectorAll('.controls .btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            renderTimeline();
+        }
+
+        function filterDesk() {
+            currentFilter.desk = document.getElementById('deskFilter').value;
+            renderTimeline();
+        }
+
+        function toggleCompleted() {
+            showCompleted = !showCompleted;
+            renderTimeline();
+        }
+
+        // Manual sync function - removed from UI but kept for reference
+        /*
+        async function manualSync() {
+            console.log('🔄 Manual sync triggered...');
+            const serverStates = await loadTaskStatesFromServer();
+            if (serverStates) {
+                let hasChanges = false;
+                allTasks.forEach(task => {
+                    const serverState = serverStates[task.id];
+                    const serverDone = serverState ? serverState.done : false;
+
+                    if (task.done !== serverDone) {
+                        task.done = serverDone;
+                        hasChanges = true;
+                    }
+                });
+
+                if (hasChanges) {
+                    renderTimeline();
+                    alert('✅ Synced with server - tasks updated!');
+                } else {
+                    alert('✅ Already in sync - no changes needed');
+                }
+            } else {
+                alert('❌ Could not connect to server');
+            }
+        }
+        */
+
+        function resetAllTasks() {
+            resetAllTasksOnServer();
+        }
+
+        async function init() {
+            await loadTasks();
+            updateTimeDisplay();
+            renderTimeline();
+            checkShiftChange();
+
+            setInterval(() => {
+                updateTimeDisplay();
+                renderTimeline();
+            }, 1000);
+
+            setInterval(() => {
+                checkShiftChange();
+            }, 60000);
+
+            setInterval(async () => {
+                const serverStates = await loadTaskStatesFromServer();
+                if (serverStates) {
+                    let hasChanges = false;
+                    allTasks.forEach(task => {
+                        const serverState = serverStates[task.id];
+                        const serverDone = serverState ? serverState.done : false;
+
+                        if (task.done !== serverDone) {
+                            task.done = serverDone;
+                            hasChanges = true;
+                        }
+                    });
+
+                    if (hasChanges) {
+                        renderTimeline();
+                        console.log('✅ Synced task updates from server');
+                    }
+                }
+            }, 5000);
+        }
+
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
