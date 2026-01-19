@@ -396,24 +396,6 @@
             transform: scale(1.2);
         }
 
-        /* Monitor badges */
-        .monitor-badge {
-            margin-left: 6px;
-            font-size: 12px;
-            opacity: 0.6;
-            cursor: help;
-        }
-
-        .auto-checked-badge {
-            margin-left: 4px;
-            font-size: 11px;
-            background: #10b981;
-            color: white;
-            padding: 1px 5px;
-            border-radius: 10px;
-            font-weight: bold;
-        }
-
         /* Status indicator */
         .status-indicator {
             position: fixed;
@@ -879,9 +861,7 @@
                                 shift: shiftType,
                                 done: done,
                                 isBackup: deskName === 'HFO Backup',
-                                link: task.link || '',
-                                productId: task.productId || null,
-                                autoChecked: false
+                                link: task.link || ''
                             });
                         }
                     });
@@ -1027,16 +1007,11 @@
                 // Highlight tasks due within 1 hour (and not completed)
                 const dueSoonClass = (!task.done && timeLeft > 0 && timeLeft < 1) ? 'due-soon' : '';
 
-                const monitorIcon = task.productId ? `<span class="monitor-badge" title="Auto-monitored: ${task.productId}">📡</span>` : '';
-                const autoCheckedIcon = task.autoChecked ? `<span class="auto-checked-badge" title="Auto-verified from web">✓</span>` : '';
-
                 return `
                     <tr class="${completedClass} ${dueSoonClass}" onclick="handleRowClick(event, '${task.id}')">
                         <td><span class="desk-badge">${task.desk}</span></td>
                         <td>
                             ${task.name}
-                            ${monitorIcon}
-                            ${autoCheckedIcon}
                             ${task.link ? `<a href="${task.link}" target="_blank" class="product-link" title="View product" onclick="event.stopPropagation()">🔗</a>` : ''}
                         </td>
                         <td class="center">
@@ -1152,60 +1127,6 @@
             resetAllTasksOnServer();
         }
 
-        // Product Monitor Auto-Check
-        let lastProdmonCheck = null;
-        
-        async function checkProductMonitor() {
-            try {
-                const response = await fetch('prodmon_check.php');
-                if (!response.ok) throw new Error('Prodmon fetch failed');
-                
-                const data = await response.json();
-                if (!data.success) throw new Error(data.error);
-                
-                lastProdmonCheck = new Date();
-                
-                // PHP returns list of tasks that should be auto-completed
-                const tasksToComplete = data.tasks_to_complete || [];
-                let autoCheckedCount = 0;
-                
-                for (const taskInfo of tasksToComplete) {
-                    const task = allTasks.find(t => t.id === taskInfo.taskId);
-                    if (task && !task.done) {
-                        task.done = true;
-                        task.autoChecked = true;
-                        autoCheckedCount++;
-                        
-                        // Save to server
-                        saveTaskToServer(task.id, true);
-                    }
-                }
-                
-                if (autoCheckedCount > 0) {
-                    console.log(`✅ Auto-checked ${autoCheckedCount} tasks from product monitor`);
-                    renderTimeline();
-                }
-                
-                updateProdmonStatus(true, data.overdue_count, data.total_monitored_tasks);
-                
-            } catch (error) {
-                console.error('Product monitor check failed:', error);
-                updateProdmonStatus(false);
-            }
-        }
-        
-        function updateProdmonStatus(success, overdueCount = 0, totalMonitored = 0) {
-            const statusSync = document.getElementById('statusSync');
-            if (lastProdmonCheck) {
-                const timeStr = lastProdmonCheck.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-                if (success) {
-                    statusSync.textContent = `Synced: ${timeStr} | ${overdueCount} pending products`;
-                } else {
-                    statusSync.textContent = `Synced: ${timeStr} | Monitor unavailable`;
-                }
-            }
-        }
-
         async function init() {
             try {
                 // Load config with cache-busting first
@@ -1255,10 +1176,6 @@
                     }
                 }
             }, 5000);
-            
-            // Check product monitor every 2 minutes for auto-completion
-            checkProductMonitor(); // Initial check
-            setInterval(checkProductMonitor, 120000);
         }
 
         window.addEventListener('DOMContentLoaded', init);
