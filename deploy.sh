@@ -26,12 +26,16 @@ if [ $? -eq 0 ]; then
     # Set file permissions (644 = rw-r--r--)
     find "$DEST" -type f -exec chmod 644 {} \;
     
-    # Make sure PHP files are readable
-    find "$DEST" -name "*.php" -exec chmod 644 {} \;
+    # Make config.js writable (for config editor saves)
+    if [ -f "${DEST}config.js" ]; then
+        chmod 666 "${DEST}config.js"
+        echo "   config.js -> 666 (rw-rw-rw-)"
+    fi
     
-    # Make task_states.json writable if it exists (for saving task states)
+    # Make task_states.json writable (for saving task states)
     if [ -f "${DEST}task_states.json" ]; then
         chmod 666 "${DEST}task_states.json"
+        echo "   task_states.json -> 666 (rw-rw-rw-)"
     fi
     
     echo "✅ Deployment complete!"
