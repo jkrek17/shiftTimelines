@@ -153,6 +153,11 @@
             color: white;
         }
 
+        .sidebar-title {
+            margin-bottom: 15px;
+            color: #0c4a6e;
+        }
+
         /* Editor */
         .editor {
             background: white;
@@ -376,19 +381,19 @@
         <div class="content">
             <!-- Sidebar -->
             <div class="sidebar">
-                <h3 style="margin-bottom: 15px; color: #0c4a6e;">Desks</h3>
+                <h3 class="sidebar-title">Desks</h3>
                 <ul class="desk-list" id="deskList"></ul>
-                
+
                 <div class="shift-tabs">
-                    <button class="shift-tab active" onclick="switchShift('Night Shift')">🌙 Night</button>
-                    <button class="shift-tab" onclick="switchShift('Day Shift')">☀️ Day</button>
+                    <button type="button" class="shift-tab active" onclick="switchShift('Night Shift')">🌙 Night</button>
+                    <button type="button" class="shift-tab" onclick="switchShift('Day Shift')">☀️ Day</button>
                 </div>
             </div>
 
             <!-- Editor -->
             <div class="editor">
                 <h2 id="editorTitle">Select a desk to begin</h2>
-                <button class="add-task-btn" onclick="addNewTask()" id="addTaskBtn" style="display: none;">
+                <button type="button" class="add-task-btn" onclick="addNewTask()" id="addTaskBtn" style="display: none;">
                     ➕ Add New Task
                 </button>
                 <ul class="tasks-list" id="tasksList"></ul>
@@ -397,10 +402,10 @@
 
         <!-- Action Bar -->
         <div class="action-bar">
-            <button class="btn btn-primary" onclick="restoreDefault()">
+            <button type="button" class="btn btn-primary" onclick="restoreDefault()">
                 🔄 Restore Default
             </button>
-            <button class="btn btn-success" onclick="saveConfig()">
+            <button type="button" class="btn btn-success" onclick="saveConfig()">
                 💾 Save Changes
             </button>
         </div>
